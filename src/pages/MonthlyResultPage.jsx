@@ -1,7 +1,11 @@
 import { useEffect, useState } from "react";
 import Header from "../components/Header";
 import ResultItem from "../components/ResultItem";
-import { fetchMonthData } from "../utils/dbDataFetch";
+import {
+  fetchMonthCache,
+  fetchMonthData,
+  rebuildMonthCache,
+} from "../utils/dbDataFetch";
 import { useParams } from "react-router-dom";
 import { numberToMonth } from "../utils/numberToMonthMapper";
 
@@ -16,9 +20,19 @@ const MonthlyResultPage = () => {
       setLoading(true);
 
       try {
-        const result = await fetchMonthData(year, month);
+        let result = await fetchMonthCache(year, month);
 
-        console.log("MONTH RESULT:", result); // DEBUG (remove later)
+        if (!result) {
+          console.log(
+            `⚠️ Cache missing for ${year}-${month}. Building cache...`
+          );
+
+          result = await fetchMonthData(year, month);
+        }
+
+        console.log(
+          `✅ Loaded month data from cache for ${year}-${month}`
+        );
 
         if (Array.isArray(result)) {
           setData(result);
@@ -26,7 +40,7 @@ const MonthlyResultPage = () => {
           setData([]);
         }
       } catch (err) {
-        console.error("Error fetching month data:", err);
+        console.error("Error loading month cache:", err);
         setData([]);
       } finally {
         setLoading(false);

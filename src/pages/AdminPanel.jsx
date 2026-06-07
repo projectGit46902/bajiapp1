@@ -6,7 +6,7 @@ import Header from "../components/Header";
 import { onAuthStateChanged, signOut } from "firebase/auth";
 import { useNavigate } from "react-router-dom";
 import Toast from "../components/Toast";
-import { deleteYearData, fetchYearMonthIndex } from "../utils/dbDataFetch";
+import { deleteYearData, fetchYearMonthIndex, rebuildHomepageCache, rebuildMonthCache } from "../utils/dbDataFetch";
 
 
 async function canAddResultToday(date) {
@@ -115,11 +115,13 @@ export default function AdminPanel() {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        setLoading(true);
 
         const date = getDate();
-        const [year] = date.split("-");
+        const [year, month] = date.split("-");
 
         if (!number) {
+            setLoading(false);
             showToast("Please enter a number.", "error");
             return;
         }
@@ -127,6 +129,7 @@ export default function AdminPanel() {
         const canAdd = await canAddResultToday(date);
 
         if (!canAdd) {
+            setLoading(false);
             showToast(
                 "Today's 8 values have already been filled.",
                 "error"
@@ -158,22 +161,20 @@ export default function AdminPanel() {
             // Check if oldest year should be removed.
             // Runs in background and does not delay saving.
             cleanupOldYearIfNeeded(year);
+            await rebuildHomepageCache();
 
+            await rebuildMonthCache(year, month);
+
+            console.log("✅ All caches updated");
             setNumber("");
+            setLoading(false);
             showToast("Saved successfully!", "success");
         } catch (error) {
             console.error(error);
+            setLoading(false);
             showToast("Failed to save.", "error");
         }
     };
-
-    if (loading) {
-        return (
-            <div className="text-center mt-5">
-                Loading...
-            </div>
-        );
-    }
 
     return (
         <div className="container-fluid text-center">
@@ -236,9 +237,21 @@ export default function AdminPanel() {
 
                                 <button
                                     type="submit"
-                                    className="btn btn-info w-100 btn-lg"
+                                    className={`btn w-100 btn-lg ${loading ? "btn-secondary" : "btn-info"
+                                        }`}
+                                    disabled={loading}
                                 >
-                                    Save Result
+                                    {loading ? (
+                                        <>
+                                            <span
+                                                className="spinner-border spinner-border-sm me-2"
+                                                role="status"
+                                            ></span>
+                                            <span>Loading...</span>
+                                        </>
+                                    ) : (
+                                        "Save Result"
+                                    )}
                                 </button>
                             </form>
                         </div>

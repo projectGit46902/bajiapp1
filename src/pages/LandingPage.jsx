@@ -5,6 +5,7 @@ import {
   fetchToday,
   fetchLastNDays,
   fetchYearMonthIndex,
+  fetchHomepageCache
 } from "../utils/dbDataFetch";
 import { useNavigate } from "react-router-dom";
 import { numberToMonth } from "../utils/numberToMonthMapper";
@@ -21,52 +22,92 @@ const LandingPage = () => {
   const navigate = useNavigate();
   const currentYear = new Date().getFullYear();
 
-  // TODAY
+  // // TODAY
+  // useEffect(() => {
+  //   const load = async () => {
+  //     setTodayLoading(true);
+  //     try {
+  //       const res = await fetchToday();
+  //       setTodayData(res || []);
+  //     } catch (err) {
+  //       console.error(err);
+  //     } finally {
+  //       setTodayLoading(false);
+  //     }
+  //   };
+  //   load();
+  // }, []);
+
+  // // LAST 5
+  // useEffect(() => {
+  //   const load = async () => {
+  //     setLastLoading(true);
+  //     try {
+  //       const res = await fetchLastNDays(5);
+  //       setLastResults(res || []);
+  //     } catch (err) {
+  //       console.error(err);
+  //     } finally {
+  //       setLastLoading(false);
+  //     }
+  //   };
+  //   load();
+  // }, []);
+
+  // // INDEX
+  // useEffect(() => {
+  //   const load = async () => {
+  //     setIndexLoading(true);
+  //     try {
+  //       const res = await fetchYearMonthIndex();
+  //       setYearMonthIndex(res || []);
+  //       localStorage.setItem("yearMonthIndex", JSON.stringify(res || []));
+  //     } catch (err) {
+  //       console.error(err);
+  //     } finally {
+  //       setIndexLoading(false);
+  //     }
+  //   };
+  //   load();
+  // }, []);
+
   useEffect(() => {
     const load = async () => {
-      setTodayLoading(true);
       try {
-        const res = await fetchToday();
-        setTodayData(res || []);
+        setTodayLoading(true);
+        setLastLoading(true);
+        setIndexLoading(true);
+        console.log("📦 Loading homepage cache");
+
+        const cache = await fetchHomepageCache();
+
+        if (!cache) {
+          console.log("❌ No cache found");
+          const yrMnthIndx = await fetchYearMonthIndex();
+          setYearMonthIndex(yrMnthIndx || []);
+          localStorage.setItem("yearMonthIndex", JSON.stringify(yrMnthIndx || []));
+          const lastNResult = await fetchLastNDays(5);
+          setLastResults(lastNResult || []);
+          const todayResult = await fetchToday();
+          setTodayData(todayResult || []);
+
+        }
+        else {
+          setTodayData(cache?.today || []);
+          setLastResults(cache?.last5 || []);
+          setYearMonthIndex(cache?.yearMonthIndex || []);
+
+          console.log("✅ Homepage loaded from cache");
+        }
       } catch (err) {
         console.error(err);
       } finally {
         setTodayLoading(false);
-      }
-    };
-    load();
-  }, []);
-
-  // LAST 5
-  useEffect(() => {
-    const load = async () => {
-      setLastLoading(true);
-      try {
-        const res = await fetchLastNDays(5);
-        setLastResults(res || []);
-      } catch (err) {
-        console.error(err);
-      } finally {
         setLastLoading(false);
-      }
-    };
-    load();
-  }, []);
-
-  // INDEX
-  useEffect(() => {
-    const load = async () => {
-      setIndexLoading(true);
-      try {
-        const res = await fetchYearMonthIndex();
-        setYearMonthIndex(res || []);
-        localStorage.setItem("yearMonthIndex", JSON.stringify(res || []));
-      } catch (err) {
-        console.error(err);
-      } finally {
         setIndexLoading(false);
       }
     };
+
     load();
   }, []);
 
@@ -120,7 +161,7 @@ const LandingPage = () => {
 
           {indexLoading ? (
             <div>Loading months...</div>
-          ) : (months.length> 0 ?(
+          ) : (months.length > 0 ? (
             months.map((month) => (
               <div key={month} className="row mb-3">
                 <div className="col">
@@ -147,9 +188,9 @@ const LandingPage = () => {
                 </div>
               </div>
             ))
-          ):(
+          ) : (
             <div className="container text-center py-5">
-                <div className="mt-2">No Data Available</div>
+              <div className="mt-2">No Data Available</div>
             </div>
           ))}
         </div>

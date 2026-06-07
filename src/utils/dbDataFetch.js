@@ -1,4 +1,4 @@
-import { doc, getDoc, collection, getDocs, query, where, orderBy, limit, writeBatch } from "firebase/firestore";
+import { doc, getDoc, setDoc, deleteDoc, collection, getDocs, query, where, orderBy, limit, writeBatch } from "firebase/firestore";
 import { db } from "../firebase";
 import { getDate } from "../utils/formatDate";
 
@@ -163,5 +163,94 @@ export const deleteYearData = async (year) => {
 
   await batch.commit();
 
-  console.log(`Deleted year ${year}`);
+  console.log(`🗑 Deleted result data for year ${year}`);
+
+  // Delete month caches
+  for (let month = 1; month <= 12; month++) {
+    const paddedMonth = String(month).padStart(2, "0");
+
+    try {
+      await deleteDoc(
+        doc(db, "cache", `month-${year}-${paddedMonth}`)
+      );
+
+      console.log(
+        `🗑 Deleted cache month-${year}-${paddedMonth}`
+      );
+    } catch (err) {
+      console.error(
+        `Failed deleting month-${year}-${paddedMonth}`,
+        err
+      );
+    }
+  }
+
+  console.log(`✅ Cleanup complete for year ${year}`);
+};
+
+export const rebuildHomepageCache = async () => {
+  console.log("🔄 Rebuilding homepage cache...");
+
+  const today = await fetchToday();
+  const last5 = await fetchLastNDays(5);
+  const yearMonthIndex = await fetchYearMonthIndex();
+
+  await setDoc(doc(db, "cache", "homepage"), {
+    today,
+    last5,
+    yearMonthIndex,
+    updatedAt: new Date().toISOString(),
+  });
+
+  console.log("✅ Homepage cache updated");
+};
+
+export const fetchHomepageCache = async () => {
+  console.log("📦 Reading homepage cache");
+
+  const snap = await getDoc(
+    doc(db, "cache", "homepage")
+  );
+
+  if (!snap.exists()) {
+    console.log("❌ Cache not found");
+    return null;
+  }
+
+  console.log("✅ Cache loaded");
+
+  return snap.data();
+};
+
+export const rebuildMonthCache = async (year, month) => {
+  console.log(`🔄 Rebuilding cache for ${year}-${month}`);
+
+  const data = await fetchMonthData(year, month);
+
+  await setDoc(
+    doc(db, "cache", `month-${year}-${month}`),
+    {
+      data,
+      updatedAt: Date.now(),
+    }
+  );
+
+  console.log(`✅ Cache updated for ${year}-${month}`);
+};
+
+export const fetchMonthCache = async (year, month) => {
+  console.log(`📦 Reading cache for ${year}-${month}`);
+
+  const snap = await getDoc(
+    doc(db, "cache", `month-${year}-${month}`)
+  );
+
+  if (!snap.exists()) {
+    console.log(`❌ Cache missing for ${year}-${month}`);
+    return null;
+  }
+
+  console.log(`✅ Cache found for ${year}-${month}`);
+
+  return snap.data().data || [];
 };
