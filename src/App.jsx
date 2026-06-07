@@ -3,7 +3,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import AdminLogin from "./pages/AdminLogin";
 import AdminPanel from "./pages/AdminPanel";
 import LandingPage from "./pages/LandingPage";
-import MonthlyResultPage from "./pages/monthlyResultPage";
+import MonthlyResultPage from "./pages/MonthlyResultPage";
 import YearlyResultPage from "./pages/YearlyResultPage";
 
 function App() {
