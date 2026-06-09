@@ -6,7 +6,8 @@ import Header from "../components/Header";
 import { onAuthStateChanged, signOut } from "firebase/auth";
 import { useNavigate } from "react-router-dom";
 import Toast from "../components/Toast";
-import { deleteYearData, fetchYearMonthIndex, rebuildHomepageCache, rebuildMonthCache } from "../utils/dbDataFetch";
+import { deleteYearData, fetchToday, fetchYearMonthIndex, rebuildHomepageCache, rebuildMonthCache } from "../utils/dbDataFetch";
+import AdminResultItem from "../components/AdminResultItem";
 
 
 async function canAddResultToday(date) {
@@ -112,6 +113,21 @@ export default function AdminPanel() {
 
         return total % 10;
     };
+    const [todayData, setTodayData] = useState([]);
+    const [tableLoading, setTableLoading] = useState(true);
+
+    const loadTodayData = async () => {
+        setTableLoading(true);
+
+        const data = await fetchToday();
+
+        setTodayData(data);
+        setTableLoading(false);
+    };
+
+    useEffect(() => {
+        loadTodayData();
+    }, []);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -169,6 +185,7 @@ export default function AdminPanel() {
             setNumber("");
             setLoading(false);
             showToast("Saved successfully!", "success");
+            await loadTodayData();
         } catch (error) {
             console.error(error);
             setLoading(false);
@@ -254,6 +271,11 @@ export default function AdminPanel() {
                                     )}
                                 </button>
                             </form>
+                            <AdminResultItem
+                                data={todayData}
+                                loading={tableLoading}
+                                onRefresh={loadTodayData}
+                            />
                         </div>
                     </div>
                 </div>
