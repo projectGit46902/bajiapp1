@@ -6,6 +6,7 @@ import {
   rebuildHomepageCache,
   rebuildMonthCache,
 } from "../utils/dbDataFetch";
+import Toast from "./Toast";
 
 const AdminResultItem = ({
   data = [],
@@ -15,6 +16,15 @@ const AdminResultItem = ({
   const [editing, setEditing] = useState(null);
   const [editValue, setEditValue] = useState("");
   const [saving, setSaving] = useState(false);
+  const [toast, setToast] = useState({
+        show: false,
+        message: "",
+        type: "success",
+    });
+
+    const showToast = (message, type = "success") => {
+        setToast({ show: true, message, type });
+    };
 
   const calculateSum = (num) => {
     return num
@@ -56,9 +66,10 @@ const AdminResultItem = ({
       if (onRefresh) {
         await onRefresh();
       }
+      showToast("Baji Updated Successfully", "success");
     } catch (err) {
       console.error(err);
-      alert("Failed to update");
+      showToast("Failed to update", "error");
     } finally {
       setSaving(false);
     }
@@ -76,7 +87,18 @@ const AdminResultItem = ({
     <>
       {data.map((day, i) => (
         <div key={i} className="mt-4">
-
+        <Toast
+                        message={toast.message}
+                        type={toast.type}
+                        show={toast.show}
+                        onClose={() =>
+                            setToast({
+                                show: false,
+                                message: "",
+                                type: "success",
+                            })
+                        }
+                    />
           <div className="h5 bg-info py-2 rounded">
             {formatDate(day.date)}
           </div>
