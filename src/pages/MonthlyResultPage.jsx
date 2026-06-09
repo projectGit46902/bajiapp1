@@ -28,6 +28,7 @@ const MonthlyResultPage = () => {
           );
 
           result = await fetchMonthData(year, month);
+          await rebuildMonthCache(year, month);
         }
 
         console.log(

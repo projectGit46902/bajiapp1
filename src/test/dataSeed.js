@@ -1,43 +1,77 @@
 import { db } from "../firebase.js";
 import { doc, setDoc } from "firebase/firestore";
 
-// random generator for testing
-const randomEntry = () => ({
-  number: Math.floor(100 + Math.random() * 900),
-  sum: Math.floor(Math.random() * 10)
-});
+const sortDigitsCustom = (number) => {
+  const order = {
+    1: 1,
+    2: 2,
+    3: 3,
+    4: 4,
+    5: 5,
+    6: 6,
+    7: 7,
+    8: 8,
+    9: 9,
+    0: 10,
+  };
 
-const generateYearData = (year) => {
-  const data = [];
+  return Number(
+    number
+      .toString()
+      .split("")
+      .sort((a, b) => order[a] - order[b])
+      .join("")
+  );
+};
 
-  for (let month = 1; month <= 12; month++) {
-    const daysInMonth = new Date(year, month, 0).getDate();
+const calculateSum = (number) => {
+  const digitSum = number
+    .toString()
+    .split("")
+    .reduce((sum, digit) => sum + Number(digit), 0);
 
-    for (let day = 1; day <= daysInMonth; day++) {
-      const date = `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+  return digitSum % 10;
+};
 
-      const values = Array.from({ length: 8 }, () => randomEntry());
+const randomEntry = () => {
+  const rawNumber = Math.floor(100 + Math.random() * 900);
 
-      data.push({ date, values });
-    }
-  }
+  const number = sortDigitsCustom(rawNumber);
 
-  return data;
+  return {
+    number,
+    sum: calculateSum(number),
+  };
 };
 
 const seedData = async () => {
-  const years = [2024, 2025, 2026]; // 👉 3 years
+  const today = new Date();
 
-  for (const year of years) {
-    const yearData = generateYearData(year);
+  const startDate = new Date(
+    today.getFullYear() - 1,
+    0,
+    1
+  ); // 1 Jan last year
 
-    for (const item of yearData) {
-      await setDoc(doc(db, "results", item.date), {
-        values: item.values
-      });
+  let currentDate = new Date(today);
 
-      console.log("Inserted:", item.date);
-    }
+  while (currentDate >= startDate) {
+    const date = currentDate.toISOString().split("T")[0];
+
+    const values = Array.from(
+      { length: 8 },
+      () => randomEntry()
+    );
+
+    await setDoc(doc(db, "results", date), {
+      values,
+    });
+
+    console.log("Inserted:", date);
+
+    currentDate.setDate(
+      currentDate.getDate() - 1
+    );
   }
 
   console.log("🔥 Seeding completed!");

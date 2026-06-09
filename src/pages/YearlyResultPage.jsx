@@ -1,5 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { doc, getDoc } from "firebase/firestore";
+import { db } from "../firebase";
 import Header from "../components/Header";
 import { numberToMonth } from "../utils/numberToMonthMapper";
 
@@ -10,17 +12,21 @@ const YearlyResultPage = () => {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        const loadData = () => {
+        const loadData = async () => {
             setLoading(true);
 
             try {
-                const stored = localStorage.getItem("yearMonthIndex");
+                const snap = await getDoc(
+                    doc(db, "cache", "yearMonthIndex")
+                );
 
-                const parsed = stored ? JSON.parse(stored) : [];
-
-                setData(Array.isArray(parsed) ? parsed : []);
+                if (snap.exists()) {
+                    setData(snap.data().data || []);
+                } else {
+                    setData([]);
+                }
             } catch (err) {
-                console.error("Error reading yearly data:", err);
+                console.error("Error loading yearly data:", err);
                 setData([]);
             } finally {
                 setLoading(false);
@@ -36,24 +42,28 @@ const YearlyResultPage = () => {
 
             <h3 className="mt-3">Yearly Results</h3>
 
-            {/* LOADING */}
             {loading ? (
                 <div className="container text-center py-5">
                     <div className="spinner-border" role="status"></div>
                     <div className="mt-2">Loading yearly data...</div>
                 </div>
-            ) : (data.length > 0 ? (
-                data?.map((yearObj) => (
+            ) : data.length > 0 ? (
+                data.map((yearObj) => (
                     <div key={yearObj.year} className="mt-4">
                         <h4>{yearObj.year}</h4>
 
                         <div className="row g-2 justify-content-center">
                             {yearObj.months.map((month) => (
-                                <div key={month} className="col-4 col-md-2">
+                                <div
+                                    key={month}
+                                    className="col-4 col-md-2"
+                                >
                                     <button
                                         className="btn btn-info w-100"
                                         onClick={() =>
-                                            navigate(`/${yearObj.year}/${month}`)
+                                            navigate(
+                                                `/${yearObj.year}/${month}`
+                                            )
                                         }
                                     >
                                         {numberToMonth(month)}
@@ -67,7 +77,7 @@ const YearlyResultPage = () => {
                 <div className="container text-center py-5">
                     <div className="mt-2">No Data Available</div>
                 </div>
-            ))}
+            )}
         </div>
     );
 };

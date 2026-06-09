@@ -6,7 +6,14 @@ import Header from "../components/Header";
 import { onAuthStateChanged, signOut } from "firebase/auth";
 import { useNavigate } from "react-router-dom";
 import Toast from "../components/Toast";
-import { deleteYearData, fetchToday, fetchYearMonthIndex, rebuildHomepageCache, rebuildMonthCache } from "../utils/dbDataFetch";
+import {
+    deleteYearData,
+    fetchToday,
+    fetchYearMonthIndex,
+    rebuildHomepageCache,
+    rebuildMonthCache,
+    rebuildYearMonthIndexCache,
+} from "../utils/dbDataFetch";
 import AdminResultItem from "../components/AdminResultItem";
 
 
@@ -21,39 +28,30 @@ async function canAddResultToday(date) {
 
 }
 
-function cleanupOldYearIfNeeded(currentYear) {
+async function cleanupOldYearIfNeeded(currentYear) {
     try {
-        const index = JSON.parse(
-            localStorage.getItem("yearMonthIndex") || "[]"
-        );
-
+        const index = await fetchYearMonthIndex();
 
         const currentYearNum = Number(currentYear);
 
-        // If current year already exists in index,
-        // then we've already handled cleanup before.
         const currentYearExists = index.some(
             (item) => Number(item.year) === currentYearNum
         );
 
         if (currentYearExists) return;
 
-        // Keep maximum 5 years
         if (index.length < 5) return;
 
         const oldestYear = Math.min(
             ...index.map((item) => Number(item.year))
         );
 
-        // Run in background (does not block save)
         deleteYearData(oldestYear).catch((err) => {
             console.error("Failed deleting old year:", err);
         });
     } catch (err) {
         console.error("Cleanup check failed:", err);
     }
-
-
 }
 
 export default function AdminPanel() {
@@ -73,18 +71,6 @@ export default function AdminPanel() {
     const showToast = (message, type = "success") => {
         setToast({ show: true, message, type });
     };
-
-    useEffect(() => {
-        const load = async () => {
-            try {
-                const res = await fetchYearMonthIndex();
-                localStorage.setItem("yearMonthIndex", JSON.stringify(res || []));
-            } catch (err) {
-                console.error(err);
-            }
-        };
-        load();
-    }, []);
 
     useEffect(() => {
         const unsub = onAuthStateChanged(auth, (u) => {
@@ -162,6 +148,8 @@ export default function AdminPanel() {
             const docRef = doc(db, "results", date);
             const snap = await getDoc(docRef);
 
+            let isNewDocument = false;
+
             if (snap.exists()) {
                 const existing = snap.data().values || [];
 
@@ -169,6 +157,8 @@ export default function AdminPanel() {
                     values: [...existing, newEntry],
                 });
             } else {
+                isNewDocument = true;
+
                 await setDoc(docRef, {
                     values: [newEntry],
                 });
@@ -176,9 +166,13 @@ export default function AdminPanel() {
 
             // Check if oldest year should be removed.
             // Runs in background and does not delay saving.
-            cleanupOldYearIfNeeded(year);
-            await rebuildHomepageCache();
+            if (isNewDocument) {
+                await rebuildYearMonthIndexCache();
+            }
 
+            await cleanupOldYearIfNeeded(year);
+
+            await rebuildHomepageCache();
             await rebuildMonthCache(year, month);
 
             console.log("✅ All caches updated");

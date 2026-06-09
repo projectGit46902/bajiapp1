@@ -254,3 +254,52 @@ export const fetchMonthCache = async (year, month) => {
 
   return snap.data().data || [];
 };
+
+export const rebuildYearMonthIndexCache = async () => {
+  console.log("🔄 Rebuilding Year-Month Index Cache...");
+
+  const snap = await getDocs(collection(db, "results"));
+
+  const map = {};
+
+  snap.forEach((doc) => {
+    const [year, month] = doc.id.split("-");
+
+    if (!map[year]) {
+      map[year] = new Set();
+    }
+
+    map[year].add(Number(month));
+  });
+
+  const result = Object.keys(map)
+    .map((year) => ({
+      year: Number(year),
+      months: Array.from(map[year])
+        .sort((a, b) => b - a)
+        .map((m) => String(m).padStart(2, "0")),
+    }))
+    .sort((a, b) => b.year - a.year);
+
+  await setDoc(
+    doc(db, "cache", "yearMonthIndex"),
+    {
+      data: result,
+      updatedAt: Date.now(),
+    }
+  );
+
+  console.log("✅ Year-Month Index Cache Updated");
+
+  return result;
+};
+
+export const fetchYearMonthIndexCache = async () => {
+  const cacheRef = doc(db, "cache", "yearMonthIndex");
+
+  const cacheSnap = await getDoc(cacheRef);
+
+  if (cacheSnap.exists()) {
+    return cacheSnap.data().data || [];
+  }
+};
